@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kgps_locator_giovanna/models/waypoint.dart';
+import 'package:kgps_locator_giovanna/widgets/compass.dart';
 
 void main() {
   runApp(const KGpsLocatorApp());
@@ -109,18 +110,102 @@ class _HomePageState extends State<HomePage> {
             onPressed: pararNavegacao,
             icon: const Icon(Icons.stop),
             label: const Text('STOP'),
-            ) 
+            )
             : null,
 
         bottomNavigationBar: Padding(
           padding: const EdgeInsets.all(12),
-          child: ElevatedButton.icon(
+          child: FilledButton.icon(
             onPressed: adicionarWaypoint,
             icon: const Icon(Icons.add_location_alt),
             label: const Text('Adicionar Waypoint'),
           ),
         ),
-  };
-}
+    );
+  }
 
-//parou no slide 9
+  Widget _buildLocationInfo(){
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal:16),
+      child: Card(
+        child:Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              _infoRow('Latitude', '${latitude.toStringAsFixed(6)}°'),
+              _infoRow('Longitude', '${longitude.toStringAsFixed(6)}°'),
+              _infoRow('Altitude', '${altitude.toStringAsFixed(1)} m'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationInfo(){
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child:Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            const Text(
+              'Navegando para:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(navegandoPara!.nome, style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 4),
+            const Text('Azimute: --°     Distância: --m'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWaypointList(){
+    return ListView.builder(
+      itemCount: waypoints.length,
+      itemBuilder: (context,index){
+        final waypoint = waypoints[index];
+
+        return Dismissible(
+          key: ValueKey(waypoint.nome),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: const Icon(Icons.delete, size: 30),
+          ),
+          onDismissed: (_){
+            excluirWaypoint(waypoint);
+          },
+          child: ListTile(
+            leading: const Icon(Icons.location_on),
+            title: Text(waypoint.nome),
+            subtitle: Text(
+              '${waypoint.latitude.toStringAsFixed(6)},'
+              '${waypoint.longitude.toStringAsFixed(6)},'
+            ),
+            onLongPress: (){
+              navegarPara(waypoint);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(value),
+        ],
+      ),
+    );
+  }
+}
