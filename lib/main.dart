@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_device_compass/flutter_device_compass.dart';
 import 'package:flutter/material.dart';
 import 'package:kgps_locator_giovanna/models/waypoint.dart';
 import 'package:kgps_locator_giovanna/widgets/compass.dart';
@@ -32,12 +36,137 @@ class HomePage extends StatefulWidget{
 
 class _HomePageState extends State<HomePage> {
     //dados ficticios para teste
-  double latitude = -23.2048746;
-  double longitude = -46.1559800;
-  double altitude = 760.0;
-  double heading = 45.0;
+  double? latitude;
+  double? longitude; 
+  double? altitude ;
+  double heading = 0.0;
+
+  String gpsStatus = 'Aguardando GPS...';
+  String compassStatus = 'Aguardando bússola...';
+
+  StreamSubscription<Position>? gpsSubscription;
+  StreamSubscription<CompassEvent>? compassSubscription;
 
   Waypoint? navegandoPara;
+
+  @override
+  void initState() {
+    super.initState();
+
+    iniciarGPS();
+    iniciarBussola();
+  }
+
+  @override
+  void dispose() {
+    gpsSubscription?.cancel();
+    compassSubscription?.cancel();
+
+    super.dispose();
+  }
+
+  Future<void> iniciarGPS() async{
+    try{
+      final servicoAtivo = await Geolocator.isLocationServiceEnabled();
+
+      if(!servicoAtivo){
+        setState(() {
+          gpsStatus = 'Serviço de localização desativado';
+        });
+        return;
+      }
+
+      var permissao = await Geolocator.checkPermission();
+
+      if (permissao == LocationPermission.denied) {
+        permissao = await Geolocator.requestPermission();
+      }
+
+      if (permissao == LocationPermission.denied ||
+          permissao == LocationPermission.deniedForever) {
+        setState(() {
+          gpsStatus = 'Permissão de localização negada';
+        });
+        return;
+      }
+
+      gpsSubscription =
+          Geolocator.getPositionStream(
+            locationSettings : const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 1,
+            ),
+          ).listen(
+            (Position position){
+              if (!mounted) return;
+
+              setState(() {
+                latitude = position.latitude;
+                longitude = position.longitude;
+                altitude = position.altitude;
+                gpsStatus = 'GPS ativo';
+              });
+            },
+            onError: (Object error){
+              if (!mounted) return;
+
+              setState(() {
+                gpsStatus = 'Erro ao obter localização: $error';
+              });
+
+              debugPrint('Erro ao obter localização: $error');
+            },
+          );
+
+    } catch (e){
+      if (!mounted) return;
+
+      setState(() {
+        gpsStatus = 'Erro ao iniciar GPS: $e';
+      });
+
+      debugPrint('Erro ao iniciar GPS: $e');
+    }
+  }
+
+
+
+  void iniciarBussola(){
+    compassSubscription = FlutterCompass.events?.listen(
+      (CompassEvent event){
+        if (!mounted) return;
+
+        if(event.heading == null){
+          setState((){
+            compassStatus = 'Bússola não disponível';
+          });
+          return;
+        }
+
+        setState(() {
+          heading = event.heading!;
+          compassStatus = 'Bússola ativa';
+        });
+      },
+      onError: (Object error){
+        if (!mounted) return;
+
+        setState(() {
+          compassStatus = 'Erro ao obter bússola: $error';
+        });
+
+        debugPrint('Erro ao obter bússola: $error');
+      },
+    );
+
+    if(compassSubscription == null){
+      setState(() {
+        compassStatus = 'Bússola não disponível';
+      });
+    }
+  }
+
+
 
   final List<Waypoint> waypoints = [
     const Waypoint(nome: 'WP001', latitude: -23.2048746, longitude: -46.1559800),
@@ -132,9 +261,9 @@ class _HomePageState extends State<HomePage> {
           padding: const EdgeInsets.all(12),
           child: Column(
             children: [
-              _infoRow('Latitude', '${latitude.toStringAsFixed(6)}°'),
-              _infoRow('Longitude', '${longitude.toStringAsFixed(6)}°'),
-              _infoRow('Altitude', '${altitude.toStringAsFixed(1)} m'),
+              _infoRow('Latitude', '${latitude?.toStringAsFixed(6)}°'),
+              _infoRow('Longitude', '${longitude?.toStringAsFixed(6)}°'),
+              _infoRow('Altitude', '${altitude?.toStringAsFixed(1)} m'),
             ],
           ),
         ),
