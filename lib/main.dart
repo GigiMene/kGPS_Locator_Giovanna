@@ -192,12 +192,116 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void adicionarWaypoint(){
-    print('Você clicou em adicionar waypoint');
-  }
+    Future<void> adicionarWaypoint() async {
+
+      if(latitude == null || longitude == null){
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Localização atual não disponível.'),
+          ),
+        );
+        return;
+      }
+
+      final formKey = GlobalKey<FormState>();
+      String nomeNovoWaypoint = '';
+
+
+          final String? nome = await showDialog<String>(
+            context: context,
+            builder: (dialogContext){
+              return AlertDialog{
+                title: const Text ('Novo Waypont'),
+
+                content: Form(
+                  key: formKey,
+                  child: TextFormField(
+                    autofocus: true,
+                    maxLength: 40,
+                    textCapitalization: TextCapitalization.words,
+
+                    decoration: const InputDecoration(
+                      labelText: 'Nome do waypoint',
+                      hintText: 'Digite o nome do waypoint',
+                      border: OutlineInputBorder(),
+                    ),
+
+                    validator: (value){
+                      if(value == null || value.trim().isEmpty){
+                        return 'Por favor, insira um nome.';
+                      }
+                      return null;
+                    },
+                    onChanged: (value){
+                      nomeNovoWaypoint = value;
+                    },
+                  ),
+                );
+
+                actions: [
+                  TextButton(
+                    onPressed: (){
+                      Navigator.of(dialogContext).pop();
+                    },
+                    child: const Text('Cancelar'),
+                  ),
+
+                  ElevatedButton(
+                    onPressed: (){
+                      if(formKey.currentState!.validate()){
+                        Navigator.of(dialogContext).pop(nomeNovoWaypoint.trim());
+                      }
+                    },
+                    child: const Text('Adicionar'),
+                  ),
+                ];
+              };
+            },
+          );
+
+          if (!mounted || nome ==null) return;
+
+          final double? latAtual = latitude;
+          final double? lonAtual = longitude;
+
+          if (latAtual == null || lonAtual == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Localização atual não disponível.'),
+              ),
+            );
+            return;
+          }
+
+          final novoWaypoint = Waypoint(
+            nome: nome,
+            latitude: latAtual,
+            longitude: lonAtual,
+          );
+
+          setState(() {
+            waypoints.add(novoWaypoint);
+          });
+
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Waypoint "${novoWaypoint.nome}" adicionado com sucesso!')));
 
   void excluirWaypoint(Waypoint waypoint){
-    print('Você clicou em excluir waypoint: ${waypoint.nome}');
+    setState((){
+      waypoints.remove(waypoint);
+
+      if(identical(navegandoPara, waypoint)){
+        navegandoPara = null;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Waypoint "${waypoint.nome}" excluído com sucesso!'),
+        duration: const Duration(seconds: 2)
+      ),
+    );
   }
 
 
@@ -337,4 +441,5 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
 }
